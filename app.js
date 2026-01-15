@@ -249,8 +249,8 @@ function JobPlatform() {
             </div>
           </div>
           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <button onClick={() => setView('student')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'student' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Volunteer</button>
-            <button onClick={() => setView('business')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'business' || view === 'admin' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Researcher</button>
+            <button onClick={() => setView('student')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'student' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Participants</button>
+            <button onClick={() => setView('business')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'business' || view === 'admin' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Researchers</button>
           </div>
         </div>
       </nav>
