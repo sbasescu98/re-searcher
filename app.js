@@ -267,7 +267,7 @@ function JobPlatform() {
         {view === 'student' ? (
           <div className="animate-in fade-in duration-500">
             <div className="max-w-3xl mb-12">
-              <h2 className="text-5xl font-extrabold text-slate-900 mb-6 leading-[1.1]">Advance science, <br/><span className="text-indigo-600">get rewarded.</span></h2>
+              <h2 className="text-5xl font-extrabold text-slate-900 mb-6 leading-[1.1]">Advance research, <br/><span className="text-indigo-600">get rewarded.</span></h2>
               <p className="text-lg text-slate-700 leading-relaxed font-medium mb-8">Browse active research studies across the university network. Contribute to world-class discoveries and earn incentives for your participation.</p>
               <div className="overflow-x-auto pb-4 custom-scrollbar mt-4">
                 <div className="flex gap-2 min-w-max">
