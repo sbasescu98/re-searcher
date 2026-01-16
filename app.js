@@ -59,16 +59,23 @@ function JobPlatform() {
 
   useEffect(() => { 
     sb.auth.getSession().then(({ data: { session } }) => {
-        setUser(session?.user ?? null);
+        const sessionUser = session?.user ?? null;
+        setUser(sessionUser);
+        if (sessionUser) setView('business'); 
         loadJobs();
     });
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (event === 'SIGNED_IN') loadJobs();
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+      if (event === 'SIGNED_IN') {
+          loadJobs();
+          setView('business');
+      }
       if (event === 'SIGNED_OUT') {
           setApplications([]);
           setView('student');
+          setUser(null);
       }
     });
 
@@ -91,6 +98,73 @@ function JobPlatform() {
     const { data, error } = await sb.from('applications').select(`*, jobs!inner ( id, job_title, business_name, contact_email, category )`).eq('jobs.contact_email', user.email);
     if (!error) setApplications(data || []);
     setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await sb.auth.signOut();
+    localStorage.clear();
+    window.location.reload();
+  };
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    if (authMode === 'signup' && authForm.password !== authForm.confirmPassword) return alert("Passwords do not match.");
+    setLoading(true);
+    let result = authMode === 'login' ? await sb.auth.signInWithPassword(authForm) : await sb.auth.signUp(authForm);
+    if (result.error) {
+        alert(result.error.message);
+        setLoading(false);
+    } else {
+        window.location.reload();
+    }
+  };
+
+  const handleApply = async (e) => {
+    e.preventDefault();
+    if (!appForm.studentEmail.toLowerCase().endsWith('@cam.ac.uk')) {
+      alert("Access restricted. Please use your @cam.ac.uk email address to submit interest.");
+      return;
+    }
+
+    setLoading(true);
+    const targetJob = selectedJob || viewingStudy;
+    const { error } = await sb.from('applications').insert([{
+      job_id: targetJob.id,
+      student_name: appForm.studentName,
+      student_email: appForm.studentEmail,
+      cover_letter: appForm.coverLetter
+    }]);
+    
+    if (error) alert(error.message);
+    else { 
+      alert("Application submitted. Someone from the research team will review it and get back to you."); 
+      setSelectedJob(null); 
+      setViewingStudy(null); 
+      setAppForm({ studentName: '', studentEmail: '', coverLetter: '' }); 
+    }
+    setLoading(false);
+  };
+
+  const handlePostJob = async (e) => {
+    e.preventDefault();
+    const { error } = await sb.from('jobs').insert([{
+      job_title: jobForm.jobTitle,
+      business_name: jobForm.businessName,
+      description: jobForm.description,
+      category: 'Active', 
+      location: jobForm.location,
+      estimated_hours: jobForm.estimatedHours,
+      contact_email: user.email, 
+      pay_amount: jobForm.payAmount,
+      pay_type: jobForm.ethicsNumber,
+      pay_status: jobForm.department,
+      timestamp: new Date().toISOString()
+    }]);
+    if (error) alert(error.message);
+    else { 
+      setShowPostForm(false); setJobForm(initialJobForm); loadJobs(); setPostSuccess(true);
+      setTimeout(() => setPostSuccess(false), 4000);
+    }
   };
 
   const handleArchive = async (e, jobId) => {
@@ -118,59 +192,13 @@ function JobPlatform() {
     };
   }, [jobs, applications, user]);
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    if (authMode === 'signup' && authForm.password !== authForm.confirmPassword) return alert("Passwords do not match.");
-    setLoading(true);
-    let result = authMode === 'login' ? await sb.auth.signInWithPassword(authForm) : await sb.auth.signUp(authForm);
-    if (result.error) alert(result.error.message);
-    setLoading(false);
-  };
-
   const filteredJobs = useMemo(() => {
     let list = jobs;
     if (view === 'student') list = list.filter(j => j.category !== 'Archived');
     if (activeFilter !== 'All') list = list.filter(j => j.pay_status === activeFilter);
+    // Modified to sort newest to oldest
     return list.sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at));
   }, [jobs, activeFilter, view]);
-
-  const handlePostJob = async (e) => {
-    e.preventDefault();
-    const { error } = await sb.from('jobs').insert([{
-      job_title: jobForm.jobTitle,
-      business_name: jobForm.businessName,
-      description: jobForm.description,
-      category: 'Active', 
-      location: jobForm.location,
-      estimated_hours: jobForm.estimatedHours,
-      contact_email: user.email, 
-      pay_amount: jobForm.payAmount,
-      pay_type: jobForm.ethicsNumber,
-      pay_status: jobForm.department,
-      timestamp: new Date().toISOString()
-    }]);
-    if (error) alert(error.message);
-    else { 
-      setShowPostForm(false); setJobForm(initialJobForm); loadJobs(); setPostSuccess(true);
-      setTimeout(() => setPostSuccess(false), 4000);
-    }
-  };
-
-  const handleApply = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    const targetJob = selectedJob || viewingStudy;
-    const { error } = await sb.from('applications').insert([{
-      job_id: targetJob.id,
-      student_name: appForm.studentName,
-      student_email: appForm.studentEmail,
-      cover_letter: appForm.coverLetter,
-      timestamp: new Date().toISOString()
-    }]);
-    if (error) alert(error.message);
-    else { alert("Registration Sent!"); setSelectedJob(null); setViewingStudy(null); setAppForm({ studentName: '', studentEmail: '', coverLetter: '' }); }
-    setLoading(false);
-  };
 
   const StudyAccordion = ({ study, isArchived }) => (
     <div className={`bg-white rounded-[2rem] border shadow-md overflow-hidden ${isArchived ? 'border-slate-100 opacity-80' : 'border-slate-200'}`}>
@@ -214,7 +242,7 @@ function JobPlatform() {
                             <p className="text-sm font-bold text-slate-900">{app.student_name}</p>
                             <p className="text-[10px] text-slate-500 font-medium">{app.student_email}</p>
                         </div>
-                        <div className="text-[11px] font-bold text-slate-600 text-center">{new Date(app.timestamp || app.created_at).toLocaleDateString('en-GB')}</div>
+                        <div className="text-[11px] font-bold text-slate-600 text-center">{new Date(app.created_at).toLocaleDateString('en-GB')}</div>
                         <div className="text-right"><span className="text-[9px] font-black text-indigo-600 uppercase bg-indigo-50 px-3 py-1 rounded-full group-hover:bg-indigo-100">{expandedAppId === app.id ? "Close" : "View Response"}</span></div>
                         </div>
                         {expandedAppId === app.id && (
@@ -279,8 +307,13 @@ function JobPlatform() {
             <div className="grid gap-8 md:grid-cols-2">
               {filteredJobs.map(job => (
                 <div key={job.id} onClick={() => setViewingStudy(job)} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl hover:border-indigo-400 transition-all group flex flex-col h-full cursor-pointer relative">
-                  <div className="absolute top-8 right-8 text-[9px] font-black text-slate-400 uppercase">{formatTimeAgo(job.timestamp || job.created_at)}</div>
-                  <h3 className="text-2xl font-bold mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1">{job.job_title}</h3>
+                  
+                  {/* POSITIONED TIMESTAMP */}
+                  <div className="absolute top-8 right-8 text-[9px] font-black text-slate-400 uppercase">
+                    {formatTimeAgo(job.timestamp || job.created_at)}
+                  </div>
+
+                  <h3 className="text-2xl font-bold mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1 pr-16">{job.job_title}</h3>
                   <div className="flex items-center gap-2 text-black font-bold uppercase text-[11px] tracking-tight truncate mb-4">
                     <Icon name="microscope" className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
                     <span>{job.business_name}</span><span className="text-slate-400 text-lg leading-none">•</span><span>{job.pay_status}</span>
@@ -316,7 +349,7 @@ function JobPlatform() {
               <div className="text-center py-20 bg-white/80 rounded-[3rem] border border-slate-300 shadow-xl space-y-6 relative">
                 <div className="absolute top-8 right-8 flex items-center gap-4">
                     <p className="text-xs font-black uppercase text-slate-400">Logged in: <span className="text-indigo-600">{user.email}</span></p>
-                    <button onClick={() => sb.auth.signOut()} className="text-xs font-black uppercase text-red-500 flex items-center gap-1 hover:underline"><Icon name="log-out" className="w-3 h-3"/> Logout</button>
+                    <button onClick={handleLogout} className="text-xs font-black uppercase text-red-500 flex items-center gap-1 hover:underline"><Icon name="log-out" className="w-3 h-3"/> Logout</button>
                 </div>
                 <Icon name="microscope" className="w-16 h-16 text-indigo-200 mx-auto" />
                 <h2 className="text-3xl font-black text-slate-900">Researcher Portal</h2>
@@ -387,15 +420,33 @@ function JobPlatform() {
 
       {selectedJob && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto items-start py-12">
-          <form onSubmit={handleApply} className="bg-white rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl space-y-6 text-left animate-in slide-in-from-bottom-4 relative">
-            <button type="button" onClick={() => setSelectedJob(null)} className="absolute top-8 right-8 text-slate-400 hover:text-slate-600"><Icon name="x" className="w-6 h-6" /></button>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Express Interest</h3>
-            <div className="space-y-4">
-               <input required placeholder="Full Name" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-black font-medium outline-none focus:border-indigo-500" value={appForm.studentName} onChange={e => setAppForm({...appForm, studentName: e.target.value})} />
-               <input required type="email" placeholder="Institutional Email" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-black font-medium outline-none focus:border-indigo-500" value={appForm.studentEmail} onChange={e => setAppForm({...appForm, studentEmail: e.target.value})} />
-               <textarea placeholder="Tell us why you're a good fit..." className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-black font-medium h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
+          <form onSubmit={handleApply} className="bg-white rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl text-left animate-in slide-in-from-bottom-4 relative border border-slate-200">
+            <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
+                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Express Interest</h3>
+                <button type="button" onClick={() => setSelectedJob(null)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
             </div>
-            <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl uppercase">{loading ? 'Processing...' : 'Submit Interest'}</button>
+            
+            <div className="space-y-6">
+               <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 ml-1">Full Name <span className="text-red-500">*</span></label>
+                  <input required placeholder="Your full name" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentName} onChange={e => setAppForm({...appForm, studentName: e.target.value})} />
+               </div>
+               
+               <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 ml-1">University Email <span className="text-red-500">*</span></label>
+                  <input required type="email" placeholder="crsid@cam.ac.uk" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentEmail} onChange={e => setAppForm({...appForm, studentEmail: e.target.value})} />
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide ml-1">Must end in @cam.ac.uk</p>
+               </div>
+               
+               <div className="space-y-1.5">
+                  <label className="text-xs font-black uppercase text-slate-500 ml-1">Motivation <span className="text-slate-400 font-bold">(Optional)</span></label>
+                  <textarea placeholder="Tell us why you're a good fit or list relevant experience..." className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
+               </div>
+
+               <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl uppercase mt-4 hover:bg-indigo-700 transition-colors">
+                  {loading ? 'Processing...' : 'Submit Interest'}
+               </button>
+            </div>
           </form>
         </div>
       )}
@@ -438,3 +489,8 @@ function JobPlatform() {
 const domNode = document.getElementById('root');
 const root = ReactDOM.createRoot(domNode);
 root.render(<JobPlatform />);
+
+// Add this at the very end of app.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = JobPlatform;
+  }
