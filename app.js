@@ -109,6 +109,11 @@ function JobPlatform() {
   const handleAuth = async (e) => {
     e.preventDefault();
     if (authMode === 'signup' && authForm.password !== authForm.confirmPassword) return alert("Passwords do not match.");
+    // CORRECTED: cam.ac.uk
+    if (authMode === 'signup' && !authForm.email.toLowerCase().endsWith('@cam.ac.uk')) {
+      alert("Account creation is restricted to @cam.ac.uk emails.");
+      return;
+    }
     setLoading(true);
     let result = authMode === 'login' ? await sb.auth.signInWithPassword(authForm) : await sb.auth.signUp(authForm);
     if (result.error) {
@@ -156,8 +161,8 @@ function JobPlatform() {
       estimated_hours: jobForm.estimatedHours,
       contact_email: user.email, 
       pay_amount: jobForm.payAmount,
-      pay_type: jobForm.ethicsNumber,
       pay_status: jobForm.department,
+      ethics_number: jobForm.ethicsNumber,
       timestamp: new Date().toISOString()
     }]);
     if (error) alert(error.message);
@@ -196,7 +201,6 @@ function JobPlatform() {
     let list = jobs;
     if (view === 'student') list = list.filter(j => j.category !== 'Archived');
     if (activeFilter !== 'All') list = list.filter(j => j.pay_status === activeFilter);
-    // Modified to sort newest to oldest
     return list.sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at));
   }, [jobs, activeFilter, view]);
 
@@ -268,7 +272,7 @@ function JobPlatform() {
   return (
     <div key={view} className="min-h-screen bg-slate-200/80 font-sans text-slate-900 pb-20">
       <nav className="bg-white border-b border-slate-300 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-3">
             <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-md"><Icon name="search" className="w-6 h-6" /></div>
             <div className="text-left font-bold">
@@ -276,7 +280,7 @@ function JobPlatform() {
               <span className="text-[10px] text-indigo-500 uppercase tracking-widest">Cambridge Network</span>
             </div>
           </div>
-          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 mt-4 sm:mt-0">
             <button onClick={() => setView('student')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'student' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Participants</button>
             <button onClick={() => setView('business')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'business' || view === 'admin' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-indigo-400'}`}>Researchers</button>
           </div>
@@ -304,11 +308,10 @@ function JobPlatform() {
                 </div>
               </div>
             </div>
-            <div className="grid gap-8 md:grid-cols-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {filteredJobs.map(job => (
                 <div key={job.id} onClick={() => setViewingStudy(job)} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl hover:border-indigo-400 transition-all group flex flex-col h-full cursor-pointer relative">
                   
-                  {/* POSITIONED TIMESTAMP */}
                   <div className="absolute top-8 right-8 text-[9px] font-black text-slate-400 uppercase">
                     {formatTimeAgo(job.timestamp || job.created_at)}
                   </div>
@@ -336,7 +339,7 @@ function JobPlatform() {
                 <Icon name="lock" className="w-12 h-12 text-indigo-500 mx-auto mb-6" />
                 <h2 className="text-3xl font-black text-center mb-8">Researcher Access</h2>
                 <form onSubmit={handleAuth} className="space-y-4">
-                  <input required type="email" placeholder="Email" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
+                  <input required type="email" placeholder="University Email" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none" value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} />
                   <input required type="password" placeholder="Password" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none" value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} />
                   {authMode === 'signup' && (
                     <input required type="password" placeholder="Confirm Password" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none" value={authForm.confirmPassword} onChange={e => setAuthForm({...authForm, confirmPassword: e.target.value})} />
@@ -353,7 +356,7 @@ function JobPlatform() {
                 </div>
                 <Icon name="microscope" className="w-16 h-16 text-indigo-200 mx-auto" />
                 <h2 className="text-3xl font-black text-slate-900">Researcher Portal</h2>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center px-10">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center px-10 sm:px-0">
                   <button onClick={() => setShowPostForm(true)} className="bg-indigo-600 text-white px-8 py-5 rounded-2xl font-bold shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"><Icon name="plus" className="w-5 h-5" /> New Study</button>
                   <button onClick={() => setView('admin')} className="bg-slate-900 text-white px-8 py-5 rounded-2xl font-bold shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"><Icon name="users" className="w-5 h-5" /> View Applicants</button>
                 </div>
@@ -391,88 +394,95 @@ function JobPlatform() {
         )}
       </main>
 
-      {/* MODALS */}
+      {/* --- MODALS (FIXED LAYOUT) --- */}
+
+      {/* VIEW STUDY MODAL */}
       {viewingStudy && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex justify-center p-4 z-50 overflow-y-auto items-start py-12" onClick={() => setViewingStudy(null)}>
-          <div className="bg-white rounded-[2.5rem] p-10 max-w-2xl w-full shadow-2xl animate-in zoom-in-95 text-left relative" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-8">
-              <div className="pr-12">
-                <h3 className="text-3xl font-black text-slate-900 leading-tight mb-2">{viewingStudy.job_title}</h3>
-                <div className="flex items-center gap-2 text-black font-bold uppercase text-[11px] tracking-widest mb-4">
-                    <Icon name="microscope" className="w-4 h-4 text-slate-500" />
-                    <span>{viewingStudy.business_name}</span><span className="text-slate-400 text-lg">•</span><span>{viewingStudy.pay_status}</span>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md">
+          <div className="flex min-h-full items-center justify-center p-4" onClick={() => setViewingStudy(null)}>
+            <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 max-w-2xl w-full shadow-2xl animate-in zoom-in-95 text-left relative" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-between items-start mb-8">
+                <div className="pr-12">
+                    <h3 className="text-3xl font-black text-slate-900 leading-tight mb-2">{viewingStudy.job_title}</h3>
+                    <div className="flex items-center gap-2 text-black font-bold uppercase text-[11px] tracking-widest mb-4">
+                        <Icon name="microscope" className="w-4 h-4 text-slate-500" />
+                        <span>{viewingStudy.business_name}</span><span className="text-slate-400 text-lg">•</span><span>{viewingStudy.pay_status}</span>
+                    </div>
                 </div>
-              </div>
-              <button onClick={() => setViewingStudy(null)} className="absolute top-8 right-8 bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600"><Icon name="x" className="w-6 h-6" /></button>
+                <button onClick={() => setViewingStudy(null)} className="absolute top-8 right-8 bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
+                </div>
+                <div className="space-y-6 mb-10">
+                <div><h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Study Description</h4><p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap text-sm">{viewingStudy.description}</p></div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Location</p><p className="font-bold text-slate-800 text-sm truncate flex items-center justify-center gap-1.5"><Icon name="map-pin" className="w-3.5 h-3.5 text-indigo-500"/>{viewingStudy.location}</p></div>
+                    <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Time Req.</p><p className="font-bold text-slate-800 text-sm flex items-center justify-center gap-1.5"><Icon name="clock" className="w-3.5 h-3.5 text-indigo-500"/>{viewingStudy.estimated_hours}h</p></div>
+                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100"><p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Incentive</p><p className="font-bold text-emerald-800 text-sm text-center">{viewingStudy.pay_amount}</p></div>
+                </div>
+                </div>
+                <button onClick={() => { setSelectedJob(viewingStudy); setViewingStudy(null); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-indigo-700 transition-colors">Apply</button>
             </div>
-            <div className="space-y-6 mb-10">
-              <div><h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3">Study Description</h4><p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap text-sm">{viewingStudy.description}</p></div>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Location</p><p className="font-bold text-slate-800 text-sm truncate flex items-center justify-center gap-1.5"><Icon name="map-pin" className="w-3.5 h-3.5 text-indigo-500"/>{viewingStudy.location}</p></div>
-                <div className="bg-slate-100 p-4 rounded-2xl border border-slate-200"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Time Req.</p><p className="font-bold text-slate-800 text-sm flex items-center justify-center gap-1.5"><Icon name="clock" className="w-3.5 h-3.5 text-indigo-500"/>{viewingStudy.estimated_hours}h</p></div>
-                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100"><p className="text-[10px] font-black text-emerald-400 uppercase mb-1">Incentive</p><p className="font-bold text-emerald-800 text-sm text-center">{viewingStudy.pay_amount}</p></div>
-              </div>
-            </div>
-            <button onClick={() => { setSelectedJob(viewingStudy); setViewingStudy(null); }} className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl">Apply</button>
           </div>
         </div>
       )}
 
+      {/* APPLY FORM MODAL */}
       {selectedJob && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto items-start py-12">
-          <form onSubmit={handleApply} className="bg-white rounded-[2.5rem] p-10 max-w-xl w-full shadow-2xl text-left animate-in slide-in-from-bottom-4 relative border border-slate-200">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
-                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Express Interest</h3>
-                <button type="button" onClick={() => setSelectedJob(null)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
-            </div>
-            
-            <div className="space-y-6">
-               <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase text-slate-500 ml-1">Full Name <span className="text-red-500">*</span></label>
-                  <input required placeholder="Your full name" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentName} onChange={e => setAppForm({...appForm, studentName: e.target.value})} />
-               </div>
-               
-               <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase text-slate-500 ml-1">University Email <span className="text-red-500">*</span></label>
-                  <input required type="email" placeholder="crsid@cam.ac.uk" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentEmail} onChange={e => setAppForm({...appForm, studentEmail: e.target.value})} />
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide ml-1">Must end in @cam.ac.uk</p>
-               </div>
-               
-               <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase text-slate-500 ml-1">Motivation <span className="text-slate-400 font-bold">(Optional)</span></label>
-                  <textarea placeholder="Tell us why you're a good fit or list relevant experience..." className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
-               </div>
-
-               <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl uppercase mt-4 hover:bg-indigo-700 transition-colors">
-                  {loading ? 'Processing...' : 'Submit Interest'}
-               </button>
-            </div>
-          </form>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/80 backdrop-blur-md">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <form onSubmit={handleApply} className="bg-white rounded-[2.5rem] p-6 sm:p-10 max-w-xl w-full shadow-2xl text-left animate-in slide-in-from-bottom-4 relative border border-slate-200">
+                <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
+                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Express Interest</h3>
+                    <button type="button" onClick={() => setSelectedJob(null)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
+                </div>
+                <div className="space-y-6">
+                <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase text-slate-500 ml-1">Full Name <span className="text-red-500">*</span></label>
+                    <input required placeholder="Your full name" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentName} onChange={e => setAppForm({...appForm, studentName: e.target.value})} />
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase text-slate-500 ml-1">University Email <span className="text-red-500">*</span></label>
+                    <input required type="email" placeholder="crsid@cam.ac.uk" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={appForm.studentEmail} onChange={e => setAppForm({...appForm, studentEmail: e.target.value})} />
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide ml-1">Must end in @cam.ac.uk</p>
+                </div>
+                <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase text-slate-500 ml-1">Motivation <span className="text-slate-400 font-bold">(Optional)</span></label>
+                    <textarea placeholder="Tell us why you're a good fit or list relevant experience..." className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
+                </div>
+                <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl uppercase mt-4 hover:bg-indigo-700 transition-colors">
+                    {loading ? 'Processing...' : 'Submit Interest'}
+                </button>
+                </div>
+            </form>
+          </div>
         </div>
       )}
 
+      {/* NEW STUDY FORM MODAL (FIXED) */}
       {showPostForm && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto items-start py-12">
-          <form onSubmit={handlePostJob} className="bg-white rounded-[2.5rem] p-10 max-w-3xl w-full shadow-2xl text-left border border-slate-200 animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
-              <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recruit Participants</h3>
-              <button type="button" onClick={() => setShowPostForm(false)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
-            </div>
-            <div className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Lab/PI Name <span className="text-red-500">*</span></label><input required placeholder="e.g. Memory Group" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.businessName} onChange={e => setJobForm({...jobForm, businessName: e.target.value})} /></div>
-                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Department <span className="text-red-500">*</span></label><select required className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500 appearance-none" value={jobForm.department} onChange={e => setJobForm({...jobForm, department: e.target.value})}><option value="" disabled>Select</option>{UNIVERSITY_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
-              </div>
-              <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Study Title <span className="text-red-500">*</span></label><input required placeholder="e.g. Visual Recognition Test" className="w-full p-4 border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={jobForm.jobTitle} onChange={e => setJobForm({...jobForm, jobTitle: e.target.value})} /></div>
-              <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Study Description <span className="text-red-500">*</span></label><textarea required placeholder="Description, eligibility, protocol, etc..." className="w-full p-4 border border-slate-200 rounded-2xl h-32 outline-none focus:border-indigo-500" value={jobForm.description} onChange={e => setJobForm({...jobForm, description: e.target.value})} /></div>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Location <span className="text-red-500">*</span></label><input required placeholder="e.g. West Hub, Downing Site" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.location} onChange={e => setJobForm({...jobForm, location: e.target.value})} /></div>
-                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Time (Hrs) <span className="text-red-500">*</span></label><input required placeholder="1.5" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.estimatedHours} onChange={e => setJobForm({...jobForm, estimatedHours: e.target.value})} /></div>
-                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Incentive <span className="text-red-500">*</span></label><input required placeholder="e.g. £15/hr, £25 total" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.payAmount} onChange={e => setJobForm({...jobForm, payAmount: e.target.value})} /></div>
-              </div>
-              <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl mt-4 hover:bg-indigo-700 transition-colors uppercase tracking-tight">Launch Study</button>
-            </div>
-          </form>
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-sm">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <form onSubmit={handlePostJob} className="bg-white rounded-[2.5rem] p-6 sm:p-10 max-w-3xl w-full shadow-2xl text-left border border-slate-200 animate-in zoom-in-95 my-12">
+                <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-6">
+                <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Recruit Participants</h3>
+                <button type="button" onClick={() => setShowPostForm(false)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-600 transition-colors"><Icon name="x" className="w-6 h-6" /></button>
+                </div>
+                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Lab/PI Name <span className="text-red-500">*</span></label><input required placeholder="e.g. Memory Group" className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.businessName} onChange={e => setJobForm({...jobForm, businessName: e.target.value})} /></div>
+                    <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Department <span className="text-red-500">*</span></label><select required className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500 appearance-none" value={jobForm.department} onChange={e => setJobForm({...jobForm, department: e.target.value})}><option value="" disabled>Select</option>{UNIVERSITY_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Study Title <span className="text-red-500">*</span></label><input required placeholder="e.g. Visual Recognition Test" className="w-full p-4 border border-slate-200 rounded-2xl font-medium text-black outline-none focus:border-indigo-500" value={jobForm.jobTitle} onChange={e => setJobForm({...jobForm, jobTitle: e.target.value})} /></div>
+                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Study Description <span className="text-red-500">*</span></label><textarea required placeholder="Description, eligibility, protocol, etc..." className="w-full p-4 border border-slate-200 rounded-2xl h-32 outline-none focus:border-indigo-500" value={jobForm.description} onChange={e => setJobForm({...jobForm, description: e.target.value})} /></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Location <span className="text-red-500">*</span></label><input required placeholder="e.g. West Hub, Downing Site" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.location} onChange={e => setJobForm({...jobForm, location: e.target.value})} /></div>
+                    <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Time (Hrs) <span className="text-red-500">*</span></label><input required placeholder="1.5" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.estimatedHours} onChange={e => setJobForm({...jobForm, estimatedHours: e.target.value})} /></div>
+                    <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Incentive <span className="text-red-500">*</span></label><input required placeholder="e.g. £15/hr, £25 total" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.payAmount} onChange={e => setJobForm({...jobForm, payAmount: e.target.value})} /></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-xs font-black uppercase text-slate-500 ml-1">Ethics Approval Code (Optional)</label><input placeholder="e.g. ES/N012345/1" className="w-full p-4 border border-slate-200 rounded-2xl font-medium outline-none focus:border-indigo-500" value={jobForm.ethicsNumber} onChange={e => setJobForm({...jobForm, ethicsNumber: e.target.value})} /></div>
+                <button type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl mt-4 hover:bg-indigo-700 transition-colors uppercase tracking-tight">Launch Study</button>
+                </div>
+            </form>
+          </div>
         </div>
       )}
 
@@ -490,7 +500,6 @@ const domNode = document.getElementById('root');
 const root = ReactDOM.createRoot(domNode);
 root.render(<JobPlatform />);
 
-// Add this at the very end of app.js
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = JobPlatform;
-  }
+}
