@@ -446,7 +446,7 @@ function JobPlatform() {
                 </div>
                 <div className="space-y-1.5">
                     <label className="text-xs font-black uppercase text-slate-500 ml-1">Motivation <span className="text-slate-400 font-bold">(Optional)</span></label>
-                    <textarea placeholder="Tell us why you're a good fit or list relevant experience..." className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
+                    <textarea placeholder="Tell us why you're a good fit for this study..." className="w-full p-4 bg-white border border-slate-200 rounded-2xl font-medium text-black h-32 resize-none outline-none focus:border-indigo-500" value={appForm.coverLetter} onChange={e => setAppForm({...appForm, coverLetter: e.target.value})} />
                 </div>
                 <button disabled={loading} type="submit" className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-lg shadow-xl uppercase mt-4 hover:bg-indigo-700 transition-colors">
                     {loading ? 'Processing...' : 'Submit Interest'}
