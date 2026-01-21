@@ -110,7 +110,7 @@ function JobPlatform() {
     e.preventDefault();
     if (authMode === 'signup' && authForm.password !== authForm.confirmPassword) return alert("Passwords do not match.");
     // CORRECTED: cam.ac.uk
-    if (authMode === 'signup' && !authForm.email.toLowerCase().endsWith('@cam.ac.uk')) {
+    if (authMode === 'signup' && !authForm.email.toLowerCase().endsWith('cam.ac.uk')) {
       alert("Account creation is restricted to @cam.ac.uk emails.");
       return;
     }
@@ -126,7 +126,7 @@ function JobPlatform() {
 
   const handleApply = async (e) => {
     e.preventDefault();
-    if (!appForm.studentEmail.toLowerCase().endsWith('@cam.ac.uk')) {
+    if (!appForm.studentEmail.toLowerCase().endsWith('cam.ac.uk')) {
       alert("Access restricted. Please use your @cam.ac.uk email address to submit interest.");
       return;
     }
